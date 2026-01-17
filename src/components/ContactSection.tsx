@@ -1,20 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Send, Phone, Mail, MessageCircle, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useSelectedServices } from '@/context/SelectedServicesContext';
+import { services, formatPrice, NEW_YEAR_DISCOUNT } from '@/config/services';
+
+const WHATSAPP_NUMBER = '917672010211';
+const PHONE_NUMBER = '+91 89789 43122';
+const EMAIL = 'contact@runicorn.in';
 
 const ContactSection = () => {
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { selectedServices } = useSelectedServices();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    services: '',
     message: '',
   });
+
+  // Get selected service names
+  const selectedServiceNames = useMemo(() => {
+    return selectedServices
+      .map((id) => services.find((s) => s.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+  }, [selectedServices]);
+
+  // Calculate total price
+  const { originalTotal, discountedTotal } = useMemo(() => {
+    const original = selectedServices.reduce((sum, serviceId) => {
+      const service = services.find((s) => s.id === serviceId);
+      return sum + (service?.price || 0);
+    }, 0);
+    const discounted = Math.round(original * (1 - NEW_YEAR_DISCOUNT));
+    return { originalTotal: original, discountedTotal: discounted };
+  }, [selectedServices]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -23,41 +46,49 @@ const ContactSection = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    
+    // Build WhatsApp message with all form data
+    let message = `Hi! I'm interested in Rubicorn Technologies services.\n\n`;
+    message += `*Name:* ${formData.name}\n`;
+    message += `*Email:* ${formData.email}\n`;
+    message += `*Phone:* ${formData.phone}\n`;
+    
+    if (selectedServiceNames) {
+      message += `\n*Services Interested In:*\n${selectedServiceNames}\n`;
+      message += `\n*Quote:*\n`;
+      message += `Original Price: ${formatPrice(originalTotal)}\n`;
+      message += `New Year Offer Price: ${formatPrice(discountedTotal)}\n`;
+      message += `You Save: ${formatPrice(originalTotal - discountedTotal)} (${Math.round(NEW_YEAR_DISCOUNT * 100)}% OFF)\n`;
+    }
+    
+    if (formData.message) {
+      message += `\n*Message:*\n${formData.message}`;
+    }
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
 
     toast({
-      title: 'Message Sent!',
-      description: "We'll get back to you within 24 hours.",
+      title: 'Redirecting to WhatsApp!',
+      description: "You'll be connected with our team shortly.",
     });
-
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      services: '',
-      message: '',
-    });
-    setIsSubmitting(false);
   };
 
   const handleWhatsApp = () => {
     const message = encodeURIComponent(
-      "Hi! I'm interested in your development services. Can you please share more details?"
+      "Hi! I am here to know about the latest services by Rubicorn Technologies."
     );
-    window.open(`https://wa.me/919876543210?text=${message}`, '_blank');
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
   };
 
   const handleCall = () => {
-    window.open('tel:+919876543210', '_self');
+    window.open(`tel:${PHONE_NUMBER.replace(/\s/g, '')}`, '_self');
   };
 
   const handleEmail = () => {
-    window.open('mailto:contact@rubicorn.tech', '_blank');
+    window.open(`mailto:${EMAIL}`, '_blank');
   };
 
   return (
@@ -127,49 +158,48 @@ const ContactSection = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="phone"
+                  className="block text-sm font-medium text-muted-foreground mb-2"
+                >
+                  Phone Number *
+                </label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="+91 98765 43210"
+                  required
+                  className="bg-secondary/50 border-border/50 focus:border-primary"
+                />
+              </div>
+
+              {/* Auto-filled Services from Calculator */}
+              {selectedServiceNames && (
                 <div>
-                  <label
-                    htmlFor="phone"
-                    className="block text-sm font-medium text-muted-foreground mb-2"
-                  >
-                    Phone Number *
-                  </label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="+91 98765 43210"
-                    required
-                    className="bg-secondary/50 border-border/50 focus:border-primary"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="services"
-                    className="block text-sm font-medium text-muted-foreground mb-2"
-                  >
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">
                     Services Interested In
                   </label>
-                  <Input
-                    id="services"
-                    name="services"
-                    value={formData.services}
-                    onChange={handleChange}
-                    placeholder="e.g., Website, Mobile App"
-                    className="bg-secondary/50 border-border/50 focus:border-primary"
-                  />
+                  <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
+                    <p className="text-sm text-foreground mb-2">{selectedServiceNames}</p>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground line-through">{formatPrice(originalTotal)}</span>
+                      <span className="text-primary font-semibold">{formatPrice(discountedTotal)}</span>
+                      <span className="text-success text-xs">Save {Math.round(NEW_YEAR_DISCOUNT * 100)}%</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label
                   htmlFor="message"
                   className="block text-sm font-medium text-muted-foreground mb-2"
                 >
-                  Your Message *
+                  Your Message
                 </label>
                 <Textarea
                   id="message"
@@ -178,7 +208,6 @@ const ContactSection = () => {
                   onChange={handleChange}
                   placeholder="Tell us about your project requirements..."
                   rows={4}
-                  required
                   className="bg-secondary/50 border-border/50 focus:border-primary resize-none"
                 />
               </div>
@@ -188,16 +217,9 @@ const ContactSection = () => {
                 variant="hero"
                 size="lg"
                 className="w-full"
-                disabled={isSubmitting}
               >
-                {isSubmitting ? (
-                  'Sending...'
-                ) : (
-                  <>
-                    Send Message
-                    <Send className="w-4 h-4" />
-                  </>
-                )}
+                Send Message
+                <Send className="w-4 h-4" />
               </Button>
             </form>
           </div>
@@ -226,7 +248,7 @@ const ContactSection = () => {
                   onClick={handleCall}
                 >
                   <Phone className="w-5 h-5" />
-                  Call Now: +91 98765 43210
+                  Call Now: {PHONE_NUMBER}
                 </Button>
                 <Button
                   variant="outline"
@@ -235,7 +257,7 @@ const ContactSection = () => {
                   onClick={handleEmail}
                 >
                   <Mail className="w-5 h-5" />
-                  contact@rubicorn.tech
+                  {EMAIL}
                 </Button>
               </div>
             </div>
@@ -266,7 +288,7 @@ const ContactSection = () => {
                   <div>
                     <p className="font-medium text-foreground">Email</p>
                     <p className="text-sm text-muted-foreground">
-                      contact@rubicorn.tech
+                      {EMAIL}
                     </p>
                   </div>
                 </div>
@@ -277,7 +299,7 @@ const ContactSection = () => {
                   <div>
                     <p className="font-medium text-foreground">Phone</p>
                     <p className="text-sm text-muted-foreground">
-                      +91 98765 43210
+                      {PHONE_NUMBER}
                     </p>
                   </div>
                 </div>
