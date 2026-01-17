@@ -1,19 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Calculator, Check, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { services, formatPrice, NEW_YEAR_DISCOUNT } from '@/config/services';
+import { useSelectedServices } from '@/context/SelectedServicesContext';
 
 const CalculatorSection = () => {
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-
-  const toggleService = (serviceId: string) => {
-    setSelectedServices((prev) =>
-      prev.includes(serviceId)
-        ? prev.filter((id) => id !== serviceId)
-        : [...prev, serviceId]
-    );
-  };
+  const { selectedServices, toggleService } = useSelectedServices();
 
   const { originalTotal, discountedTotal, savingsPercent } = useMemo(() => {
     const original = selectedServices.reduce((sum, serviceId) => {
