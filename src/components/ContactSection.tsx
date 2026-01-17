@@ -9,7 +9,7 @@ import { services, formatPrice, NEW_YEAR_DISCOUNT } from '@/config/services';
 
 const WHATSAPP_NUMBER = '917672010211';
 const PHONE_NUMBER = '+91 89789 43122';
-const EMAIL = 'contact@runicorn.in';
+const EMAIL = 'contact@rubicorn.in';
 
 const ContactSection = () => {
   const { toast } = useToast();
